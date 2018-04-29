@@ -4,8 +4,8 @@ import itertools
 
 Coordinate = collections.namedtuple('Coordinate', ['x', 'y'])
 
-grids_x = 10
-grids_y= 10
+grids_x = 5
+grids_y = 5
 
 grids = {Coordinate(x,y): None for x in range(grids_x) for y in range(grids_y)}
 
@@ -51,7 +51,9 @@ def get_direction(x, y):
 
 
 def in_boundary(x, y):
-    return x < grids_x and y < grids_y and x >= 0 and y >= 0
+    if x >= 0 and y >= 0:
+        return x < grids_x and y < grids_y
+    return False
 
 
 class Creature:
@@ -78,39 +80,52 @@ class Creature:
                 break
             # print(f'Initializing of {self} failed.')
         # self._position = Coordinate(x, y)
+        self._died = False
         grids[self._position] = self
 
     @property
     def position(self):
         return self._position
 
-    def move(self):
-        """
-        :param x: The final x-coordinate of the creature.
-        :param y: The final y-coordinate of the creature.
-        :return: None
+    def _is_same_species(self, x, y):
+        creature_at_grid = grids[Coordinate(x, y)]
+        return isinstance(creature_at_grid, self.__class__)
 
-        Should check if the grid movable before moving actually.
-        """
+    def _move_to_new_coordinate(self, x, y):
+        # print("Inside Creature _move_to_new_coordinate")
+        # print(f'{self} in {self.position} is moving to {Coordinate(x, y)}\n')
+        global grids
+        # print(f'\nPrinting full grids before: {grids}.\n')
+        grids[self.position] = None
+        # print(f"Original grids is: {# grids[self.position]}.")
+        self._position = Coordinate(x, y)
+        # print(f'{self}\'s new postion: {# self.position}.')
+        grids[self.position] = self
+        # print(f'\nPrinting full grids before: {grids}.\n')
+
+        # print(f'{self}\'s new position in {grids[self.position]}.')
+
+
+    def _out_of_boundary(self, x, y):
+        return f'{self} cannot move to {Coordinate(x, y)}. Out of Boundary.\n'
+
+
+    def move(self):
+        global grids
         new_x, new_y = get_direction(self._position.x, self._position.y)
+        # print(f'The new direction for {self} is {Coordinate(new_x, new_y)}.')
         if in_boundary(new_x, new_y) and not is_occupied(new_x, new_y):
-            print(f'{self} in {self._position} is moving to {Coordinate(new_x, new_y)}\n')
-            grids[self._position] = None
-            self._position = Coordinate(new_x, new_y)
-            grids[self._position] = self
-            return self
+            self._move_to_new_coordinate(new_x, new_y)
         elif not in_boundary(new_x, new_y):
-            print(f'{self} cannot escape to {Coordinate(new_x, new_y)}.\n')
+            self._out_of_boundary(new_x, new_y)
         elif is_occupied(new_x, new_y):
-            print(f'{Coordinate(new_x, new_y)} is occupied.\nI will give a birth.')
-            self.__class__()
-            print(f'({self}) is crashing at Coordinate({new_x}, {new_y}).\nBecause it is out of boundary or someone is in it.')
+            self.birth()
 
     def birth(self):
         x, y = random_coordinate(grids_x, grids_y)
         if Coordinate(x, y) not in all_occupied_cells():
-            new_creature = self.__class__(x, y)
-            print(f'New {new_creature} is at {new_creature.position}.')
+            self.__class__()
+            # print(f'New {new_creature} is at {new_creature.position}.')
 
 
 class Fish(Creature):
@@ -120,6 +135,20 @@ class Fish(Creature):
     def __init__(self):
         super().__init__()
         self._id = next(self.__class__._fish_id)
+        self._died = False
+        # print(f'Fish {self._id} is born at {self.position}.')
+
+    def move(self):
+        new_x, new_y = get_direction(self._position.x, self._position.y)
+        # print(f'{self}\'s new direction is {Coordinate(new_x, new_y)}.\n')
+        if in_boundary(new_x, new_y) and not is_occupied(new_x, new_y):
+            self._move_to_new_coordinate(new_x, new_y)
+        elif not in_boundary(new_x, new_y):
+            self._out_of_boundary(new_x, new_y)
+        elif is_occupied(new_x, new_y):
+            if self._is_same_species(new_x, new_y):
+                self.birth()
+                # print(f'{self} mated with {grids[Coordinate(new_x, new_y)]}.')
 
     def __repr__(self):
         return f'Fish {self._id}'
@@ -132,61 +161,79 @@ class Bear(Creature):
     def __init__(self):
         super().__init__()
         self._id = next(self.__class__._bear_id)
+        # print(f'Bear {self._id} is born at {self.position}.')
         self._eaten = []
 
     def __repr__(self):
         return f'Bear {self._id}'
 
+    def move(self):
+        new_x, new_y = get_direction(self._position.x, self._position.y)
+        # print(f'{self}\'s new direction is {Coordinate(new_x, new_y)}.\n')
+        if in_boundary(new_x, new_y) and not is_occupied(new_x, new_y):
+            self._move_to_new_coordinate(new_x, new_y)
+        elif not in_boundary(new_x, new_y):
+            self._out_of_boundary(new_x, new_y)
+        elif is_occupied(new_x, new_y):
+            if self._is_same_species(new_x, new_y):
+                self.birth()
+                # print(f'{self} mated with {grids[Coordinate(new_x, new_y)]}.')
+            else:
+                prey = self.eat(grids[Coordinate(new_x, new_y)])
+                return prey
+
     def eat(self, prey):
-        if isinstance(prey, Fish):
-            self._eaten.append(str(prey))
+        self._eaten.append(str(prey))
 
-            for k, v in grids.items():
-                if v == prey:
-                    del grids[k]
-                    break
-
-            print(f'{prey} was eaten by {self}.')
-            del prey
-
-
-
-
+        for k, v in grids.items():
+            if v == prey:
+                grids[k] = None
+                break
+        print(f'{prey} was eaten by {self}.')
+        return prey
 
 
 if __name__ == '__main__':
+    print("Starting to initialize animals.")
     for i in range(5):
         random_i = random.randint(0, 100)
         if random_i % 2 == 0:
             Fish()
-            print(f'New Fish is born.')
         else:
             Bear()
-            print(f'New Bear is born.')
 
-    occupied = [c for c in grids.keys() if grids[c]]
+    occupied = all_occupied_cells()
+    occupied_in_words = [f'{grids[c]} in {c}' for c in occupied]
 
+    round = 1
 
-    print(f'All Grids: {grids}.\n\n')
-
-    for i in range(5):
+    while True:
+        if len(occupied) == len(grids):
+            break
+        if round == 1000:
+            break
         print("*" * 40)
-        print(f'Round {i}')
-        occupied = all_occupied_cells()
-        print(f'All Occupied: {occupied}.\n\n')
-        for c in occupied:
-            print(f"Grid {c}: {grids[c]}.")
-            # print('')
-            grids[c].move()
 
-    # occupied = all_occupied_cells()
-    # print(occupied)
-    #
-    # for c in occupied:
-    #     x, y = random_coordinate(grids_x, grids_y)
-    #     # print(f'The random coordinate is: {x}, {y}.')
-    #     grids[c].move(x, y)
-    #
-    # print(all_occupied_cells())
+        print(f'Round {round}')
+        # print(f'All Occupied: {occupied}.')
+        print(f'Occupant: {sorted(occupied_in_words)}.\n')
+        for c in occupied:
+            if grids[c] is None:
+                continue
+            if not grids[c]._died:
+                # print(f"Grid {c}: {grids[c]}.")
+                grids[c].move()
+            else:
+                del grids[c]
+        occupied = all_occupied_cells()
+        occupied_in_words = [f'{grids[c]} in {c}' for c in occupied]
+        round += 1
+
+    print("Simulation ended.")
+    print('*' * 20)
+    print(grids)
+
+
+
 
 
