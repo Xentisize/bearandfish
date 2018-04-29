@@ -1,6 +1,7 @@
 import collections
 import random
 import itertools
+import draw_grid
 
 Coordinate = collections.namedtuple('Coordinate', ['x', 'y'])
 
@@ -189,7 +190,7 @@ class Bear(Creature):
             if v == prey:
                 grids[k] = None
                 break
-        print(f'{prey} was eaten by {self}.')
+        # print(f'{prey} was eaten by {self}.')
         return prey
 
 
@@ -216,7 +217,8 @@ if __name__ == '__main__':
 
         print(f'Round {round}')
         # print(f'All Occupied: {occupied}.')
-        print(f'Occupant: {sorted(occupied_in_words)}.\n')
+        # print(f'Occupant: {sorted(occupied_in_words)}.\n')
+        draw_grid.draw_grids(grids, grids_x, grids_y)
         for c in occupied:
             if grids[c] is None:
                 continue
@@ -230,8 +232,10 @@ if __name__ == '__main__':
         round += 1
 
     print("Simulation ended.")
-    print('*' * 20)
-    print(grids)
+    bears = [grids[b] for b in occupied if isinstance(grids[b], Bear)]
+    for b in bears:
+
+        print(f'{b} has eatern {b._eaten}.')
 
 
 
