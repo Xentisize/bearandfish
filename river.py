@@ -10,7 +10,7 @@ class River:
         :param x: x-dimension of the whole grid
         :param y: y-dimension of the whole grid
 
-        _grids[Coordinate(x, y)] = [Creature, "Waiting"|"Moved"]
+        _grids[Coordinate(x, y)] = Creature
         """
         self._grids = {Coordinate(x, y): None for i in range(x) for j in range(y)}
         self._x_dimension = x
@@ -49,7 +49,8 @@ class River:
                 moving_direction = random.randint(0, 3)
                 if moving_direction == 0 and cell.x + moving_direction <= self._x_dimension - 1:
                     if not self._isoccupied(cell.x + 1, y):
-                        self._grids[Coordinate(cell.x + 1, y)]
+                        self._grids[Coordinate(cell.x + 1, y)] = self._grid[Coordinate(cell.x, y)]  # move the creature to the new grid
+                        self._grid[Coordinate(cell.x, y)] = None    # unreference the original grid
 
 
 
